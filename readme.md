@@ -48,7 +48,7 @@ g++ -std=c++17 pdf_tool.cpp -o pdf_tool
 
 ### Kompilace s Tesseract OCR
 Pokud chcete, aby fungovala funkce OCR, je potřeba mít nainstalované knihovny Tesseract a Leptonica:  
-Instalace knihoven v ubuntu: apt install tesseract-ocr libtesseract-dev libleptonica-dev
+Instalace knihoven v ubuntu: **apt install tesseract-ocr libtesseract-dev libleptonica-dev libpodofo-dev**
 
 g++ -std=c++17 pdf_tool.cpp -o pdf_tool -ltesseract -llept
 

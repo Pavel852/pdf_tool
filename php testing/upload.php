@@ -1,6 +1,6 @@
 <?php
 // Nastavte dle skutečné cesty k pdf_tool (binární soubor):
-$pdfToolPath = "./pdf_tool";
+$pdfToolPath = "../pdf_tool";
 // Příklad pro Linux: "/usr/local/bin/pdf_tool"
 // Příklad pro Windows (cygwin/WSL): "/mnt/c/Users/xxx/pdf_tool.exe"
 

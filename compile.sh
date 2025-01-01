@@ -1,0 +1,1 @@
+g++ -std=c++17 pdf_tool.cpp -o pdf_tool -ltesseract -llept

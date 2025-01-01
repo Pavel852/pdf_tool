@@ -1,0 +1,18 @@
+Toto dílo (software/projekt) je licencováno podle mezinárodní licence
+Creative Commons Attribution 4.0 International (CC BY 4.0).
+
+To znamená, že můžete dílo:
+
+- Sdílet — kopírovat, distribuovat a sdělovat veřejnosti
+- Upravit — remixovat, transformovat a vytvářet z něj díla odvozená
+
+za předpokladu, že splníte následující podmínku:
+
+- Uveďte původ (Attribution) — Musíte uvést náležité uznání autorství,
+  připojit odkaz na licenci a vyznačit, zda jste provedli změny.
+  To vše můžete provést jakýmkoli rozumným způsobem, ale ne tak,
+  aby vznikl dojem, že poskytovatel licence vás nebo vaše dílo podporuje.
+
+Podrobnější informace naleznete v oficiálním znění licence na:
+
+https://creativecommons.org/licenses/by/4.0/

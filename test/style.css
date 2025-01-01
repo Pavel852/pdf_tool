@@ -51,12 +51,25 @@ button:hover {
   color: #999;
   transition: all 0.3s ease;
   cursor: pointer;
+  margin-bottom: 15px;
 }
 
 #dropZone.hover {
   border-color: #007bff;
   background-color: #e9f5ff;
   color: #007bff;
+}
+
+#fileList {
+  margin-bottom: 15px;
+}
+
+.file-item {
+  margin: 5px 0;
+  padding: 10px;
+  background: #eee;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
 #status {
@@ -80,3 +93,4 @@ button:hover {
   background: #28a745;
   color: #fff;
 }
+

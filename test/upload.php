@@ -1,17 +1,19 @@
 <?php
-// Nastavte dle skutečné cesty k pdf_tool (binární soubor):
+// Nastavte cestu k pdf_tool (zkompilovaný binární soubor):
+// Např. na Linuxu: "/usr/local/bin/pdf_tool"
+// Např. Windows (WSL/Cygwin): "/mnt/c/Users/xxxx/pdf_tool.exe"
 $pdfToolPath = "../pdf_tool";
-// Příklad pro Linux: "/usr/local/bin/pdf_tool"
-// Příklad pro Windows (cygwin/WSL): "/mnt/c/Users/xxx/pdf_tool.exe"
 
+// Nastavení hlavičky pro JSON výstup
 header('Content-Type: application/json; charset=utf-8');
 
+// Adresář pro nahrané a výstupní soubory
 $targetDir = __DIR__ . '/uploads';
 if (!is_dir($targetDir)) {
     mkdir($targetDir, 0777, true);
 }
 
-// Kontrola, zda přišly soubory a funkce
+// Ověříme, zda přišla funkce (ocr|blend) a nějaké soubory
 if (!isset($_POST['function']) || !isset($_FILES['files'])) {
     echo json_encode([
         'success' => false,
@@ -20,7 +22,7 @@ if (!isset($_POST['function']) || !isset($_FILES['files'])) {
     exit;
 }
 
-$function     = $_POST['function']; // "ocr" nebo "blend"
+$function = $_POST['function']; // "ocr" nebo "blend"
 $uploadedFiles = $_FILES['files'];
 
 // Uložíme nahrané soubory do /uploads/
@@ -38,7 +40,7 @@ for ($i = 0; $i < count($uploadedFiles['name']); $i++) {
     }
 }
 
-// Pokud se nepodařilo žádný soubor uložit, končíme
+// Pokud se nepodařilo žádný soubor uložit, skončíme
 if (count($inputFiles) === 0) {
     echo json_encode([
         'success' => false,
@@ -57,7 +59,7 @@ if ($function === 'ocr') {
 
 $outputPath = $targetDir . '/' . $outputFileName;
 
-// Sestavíme příkaz. Použijeme escapeshellcmd (pro binárku) a escapeshellarg (pro argumenty).
+// Sestavíme příkaz. 
 $cmd  = escapeshellcmd($pdfToolPath);
 $cmd .= ' -f ' . escapeshellarg($function);
 $cmd .= ' -i';
@@ -66,11 +68,11 @@ foreach ($inputFiles as $file) {
 }
 $cmd .= ' -o ' . escapeshellarg($outputPath);
 
-// Spustíme příkaz a získáme výstup a návratový kód
+// Spustíme příkaz a zjistíme výstup a návratový kód
 exec($cmd . ' 2>&1', $output, $returnVar);
 
+// Pokud není návratový kód 0, došlo k chybě
 if ($returnVar !== 0) {
-    // Chyba
     echo json_encode([
         'success' => false,
         'error'   => 'pdf_tool selhalo. Výstup: ' . implode("\n", $output)
@@ -78,11 +80,9 @@ if ($returnVar !== 0) {
     exit;
 }
 
-// Sestavíme URL k souboru, abychom ho mohli stáhnout
-// Předpokládáme, že "uploads" je dostupné na stejné úrovni jako "upload.php"
+// Sestavíme URL k souboru (pro stažení)
 $downloadUrl = 'uploads/' . $outputFileName;
 
-// Vrátíme JSON
 echo json_encode([
     'success'     => true,
     'downloadUrl' => $downloadUrl

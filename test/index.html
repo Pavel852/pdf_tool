@@ -17,7 +17,9 @@
     <option value="blend">Blend (sloučení PDF)</option>
   </select>
 
-  <div id="dropZone">Přetáhněte .pdf, .png, .jpg soubory sem</div>
+  <div id="dropZone">Přetáhněte .pdf / .png / .jpg sem</div>
+  
+  <!-- Skryté pole pro případy, kdy uživatel klikne na dropZone -->
   <input 
     type="file" 
     id="fileInput" 
@@ -26,6 +28,9 @@
     style="display: none;" 
   />
 
+  <!-- Seznam vybraných souborů -->
+  <div id="fileList"></div>
+
   <button id="sendBtn">Odeslat</button>
   
   <div id="status"></div>
@@ -33,14 +38,45 @@
 </div>
 
 <script>
-  const dropZone        = document.getElementById('dropZone');
-  const fileInput       = document.getElementById('fileInput');
-  const sendBtn         = document.getElementById('sendBtn');
-  const statusDiv       = document.getElementById('status');
-  const downloadDiv     = document.getElementById('downloadLink');
-  const functionSelect  = document.getElementById('functionSelect');
+  const dropZone       = document.getElementById('dropZone');
+  const fileInput      = document.getElementById('fileInput');
+  const sendBtn        = document.getElementById('sendBtn');
+  const statusDiv      = document.getElementById('status');
+  const downloadDiv    = document.getElementById('downloadLink');
+  const functionSelect = document.getElementById('functionSelect');
+  const fileListDiv    = document.getElementById('fileList');
 
-  // Drag & drop - zabráníme defaultní akci pro dragover a dragleave
+  // =====================================================
+  // Funkce, která zobrazí seznam vybraných souborů v divu #fileList
+  // =====================================================
+  function updateFileList() {
+    fileListDiv.innerHTML = ''; // Vymažeme stávající obsah
+    
+    const files = fileInput.files;
+    if (!files || files.length === 0) {
+      fileListDiv.innerHTML = '<p style="color:#999;">Žádné soubory vybrány</p>';
+      return;
+    }
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      
+      // Vytvoříme box pro jeden soubor
+      const fileBox = document.createElement('div');
+      fileBox.classList.add('file-item');
+      fileBox.innerHTML = `
+        <strong>${file.name}</strong><br>
+        Typ: ${file.type || 'neznámý'}<br>
+        Velikost: ${(file.size / 1024).toFixed(2)} KB
+      `;
+      
+      fileListDiv.appendChild(fileBox);
+    }
+  }
+
+  // =====================================================
+  // Drag & Drop
+  // =====================================================
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -58,20 +94,27 @@
     e.stopPropagation();
     dropZone.classList.remove('hover');
 
-    // Uložíme dropnuté soubory do našeho fileInput
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      // Volitelně můžeme zkontrolovat typy souborů
-      // Zde pro ukázku jen přiřadíme všechny.
+      // Přeneseme soubory do fileInput
       fileInput.files = e.dataTransfer.files;
+      // Aktualizujeme seznam souborů
+      updateFileList();
     }
   });
 
-  // Kliknutí na dropZone otevře dialog pro výběr souborů
+  // Kliknutí na dropZone => otevření dialogu pro ruční výběr souborů
   dropZone.addEventListener('click', () => {
     fileInput.click();
   });
 
+  // Změna v inputu (když uživatel vybere soubory přes dialog)
+  fileInput.addEventListener('change', () => {
+    updateFileList();
+  });
+
+  // =====================================================
   // Klik na tlačítko "Odeslat"
+  // =====================================================
   sendBtn.addEventListener('click', () => {
     statusDiv.textContent = 'Odesílám...';
     downloadDiv.innerHTML = '';
@@ -81,6 +124,7 @@
 
     if (!files || files.length === 0) {
       alert('Nebyl vybrán žádný soubor!');
+      statusDiv.textContent = '';
       return;
     }
 
@@ -89,11 +133,6 @@
     formData.append('function', selectedFunction);
 
     for (let i = 0; i < files.length; i++) {
-      // Můžeme zkontrolovat typy souborů i zde (pokud chceme)
-      // if (!['application/pdf','image/png','image/jpeg'].includes(files[i].type)) {
-      //   alert('Nepodporovaný typ souboru: ' + files[i].name);
-      //   return;
-      // }
       formData.append('files[]', files[i]);
     }
 
@@ -107,6 +146,7 @@
           const response = JSON.parse(xhr.responseText);
           if (response.success) {
             statusDiv.textContent = 'Hotovo! Výstup připraven.';
+            // Nabídneme odkaz ke stažení
             downloadDiv.innerHTML = 
               '<a href="' + response.downloadUrl + '" target="_blank">Stáhnout výsledek</a>';
           } else {
@@ -126,6 +166,9 @@
 
     xhr.send(formData);
   });
+
+  // Načteme prázdný seznam souborů na startu
+  updateFileList();
 </script>
 
 </body>

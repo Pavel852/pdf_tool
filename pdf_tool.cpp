@@ -3,24 +3,18 @@
  * Autor: PB (pavel.bartos.pb@gmail.com)
  * Licence: CC
  *
- * Implementace funkcí:
- * 1) Slouèení PDF (blend)  -- pomocí PoDoFo
- * 2) Konverze JPG/PNG do PDF (convert) -- pomocí PoDoFo
- * 3) OCR (jpg/png/pdf do .txt) -- pseudo-kód pro Tesseract
+ * Implementace (bez PoDoFo):
+ * 1) Slouèení PDF souborù (blend) pomocí externího nástroje QPDF
+ * 2) Konverze obrázkù (JPG/PNG) do PDF (convert) pomocí externího nástroje ImageMagick
+ * 3) OCR (jpg/png/pdf do .txt) - pseudo-kód (možno nahradit voláním Tesseract)
  */
 
 #include <iostream>
 #include <string>
 #include <vector>
 #include <fstream>
-#include <ctime>       // pro pøípadné generování unikátního jména, pokud byste chtìli
-
-// -------------- PoDoFo --------------
-#include <podofo/podofo.h>
-
-// -------------- Tesseract OCR (pseudo) --------------
-// #include <tesseract/baseapi.h>
-// #include <leptonica/allheaders.h>
+#include <sstream>      // pro sestavování pøíkazù
+#include <cstdlib>      // system()
 
 // Pomocná funkce pro zobrazení nápovìdy (help)
 void printHelp() {
@@ -33,155 +27,123 @@ void printHelp() {
         << "  -o <soubor>      Vystupni soubor (neni povinny). Pokud neni zadano,\n"
         << "                   pouzije se automaticky 'output.pdf' nebo 'output.txt'.\n"
         << "  -f <funkce>      Funkce:\n"
-        << "                   blend   - Slouceni PDF do jednoho\n"
-        << "                   convert - Konverze JPG/PNG do PDF\n"
-        << "                   ocr     - OCR (z PDF/JPG/PNG do txt)\n"
+        << "                   blend   - Slouceni PDF do jednoho (QPDF)\n"
+        << "                   convert - Konverze JPG/PNG do PDF (ImageMagick)\n"
+        << "                   ocr     - OCR (z PDF/JPG/PNG do txt) [pseudo-kod]\n"
         << "\nPriklad:\n"
-        << "  pdf_tool -f blend -i file1.pdf file2.pdf file3.pdf\n"
-        << "  pdf_tool -f convert -i obrazek.jpg pic.png\n"
-        << "  pdf_tool -f ocr -i scan.pdf pic.png\n";
+        << "  pdf_tool -f blend   -i file1.pdf file2.pdf -o merged.pdf\n"
+        << "  pdf_tool -f convert -i obrazek.jpg pic.png -o vystup.pdf\n"
+        << "  pdf_tool -f ocr     -i scan.pdf pic.png -o vysledek.txt\n";
 }
 
 // Pomocná funkce pro zobrazení verze
 void printVersion() {
     std::cout 
-        << "pdf_tool v1.0\n"
+        << "pdf_tool v1.8 (bez PoDoFo)\n"
         << "Autor: PB, pavel.bartos.pb@gmail.com\n"
         << "License: CC\n";
 }
 
 /*
- * Funkce pro slouèení PDF (blend) pomocí knihovny PoDoFo
+ * Funkce pro slouèení PDF (blend)
+ * Využíváme externí nástroj QPDF:
+ *   qpdf --empty --pages file1.pdf file2.pdf ... -- out.pdf
  */
 bool mergePDFs(const std::vector<std::string>& inputFiles, const std::string& outputFile) {
-    using namespace PoDoFo;
-
-    try {
-        std::cout << "[INFO] Sluèuji PDF pomocí PoDoFo...\n";
-
-        PdfMemDocument pdfOut;
-
-        for (const auto &inputPath : inputFiles) {
-            // Ovìøit, zda soubor jde otevøít
-            std::ifstream ifs(inputPath, std::ios::binary);
-            if (!ifs.good()) {
-                std::cerr << "[ERROR] Soubor '" << inputPath 
-                          << "' nelze otevrit. Neexistuje nebo chybi prava.\n";
-                return false;
-            }
-            ifs.close();
-
-            PdfMemDocument pdfIn;
-            pdfIn.Load(inputPath.c_str());  // Mùže vyhodit výjimku (napø. kód 8)
-            int pageCount = pdfIn.GetPageCount();
-            std::cout << "[DEBUG] Soubor: " << inputPath
-                      << " obsahuje " << pageCount << " stran\n";
-
-            for (int pageIndex = 0; pageIndex < pageCount; ++pageIndex) {
-                pdfOut.Append(pdfIn, pageIndex);
-            }
+    // Základní ovìøení existence a èitelnosti souborù
+    for (const auto &f : inputFiles) {
+        std::ifstream test(f);
+        if (!test.good()) {
+            std::cerr << "[ERROR] Soubor '" << f << "' neexistuje nebo jej nelze otevrit.\n";
+            return false;
         }
+    }
 
-        pdfOut.Write(outputFile.c_str());
-        std::cout << "[INFO] Hotovo. Výstupní soubor: " << outputFile << "\n";
-        return true;
+    // Sestavíme pøíkaz pro QPDF
+    // qpdf --empty --pages file1.pdf file2.pdf ... -- out.pdf
+    std::ostringstream cmd;
+    cmd << "qpdf --empty --pages";
+    for (const auto &f : inputFiles) {
+        // Pozor: Pokud by názvy souborù obsahovaly mezery, je tøeba je escapovat
+        cmd << " " << f;
     }
-    catch (PdfError &err) {
-        std::cerr << "[ERROR] PoDoFo selhalo pri slucovani. Code: " 
-                  << err.GetError() << "\n";
+    cmd << " -- " << outputFile;
+
+    std::cout << "[INFO] Spoustim QPDF pro slouceni PDF:\n" << cmd.str() << "\n";
+
+    int ret = std::system(cmd.str().c_str());
+    if (ret != 0) {
+        std::cerr << "[ERROR] qpdf selhalo (navratovy kod: " << ret << ").\n";
         return false;
     }
-    catch (std::exception &ex) {
-        std::cerr << "[ERROR] Vyjimka pri slucovani PDF: " << ex.what() << "\n";
-        return false;
-    }
+
+    std::cout << "[INFO] Soubory byly uspesne slouceny do: " << outputFile << "\n";
+    return true;
 }
 
 /*
- * Funkce pro konverzi obrázku (JPG, PNG) do PDF (convert) pomocí PoDoFo
+ * Funkce pro konverzi obrázku (JPG, PNG) do PDF (convert)
+ * Využíváme externí nástroj ImageMagick (napø. "convert" nebo "magick convert"):
+ *
+ *   magick convert img1.jpg img2.png out.pdf
+ * (pøípadnì starší verze: convert img1.jpg ...)
  */
 bool imageToPDF(const std::vector<std::string>& inputFiles, const std::string& outputFile) {
-    using namespace PoDoFo;
-
-    try {
-        std::cout << "[INFO] Konvertuji obrazky (JPG/PNG) do PDF pomoci PoDoFo...\n";
-
-        PdfMemDocument pdfOut;
-
-        for (const auto &imgPath : inputFiles) {
-            // Ovìøit, zda soubor jde otevøít
-            std::ifstream ifs(imgPath, std::ios::binary);
-            if (!ifs.good()) {
-                std::cerr << "[ERROR] Soubor '" << imgPath 
-                          << "' nelze otevrit.\n";
-                continue; // nebo return false, dle potøeby
-            }
-            ifs.close();
-
-            // Vytvoøíme novou stránku (A4 = 595 x 842 bodù)
-            PdfRect pageRect(0.0, 0.0, 595.0, 842.0);
-            PdfPage* pPage = pdfOut.CreatePage(pageRect);
-            if (!pPage) {
-                std::cerr << "[ERROR] Nepodarilo se vytvorit stranku pro: " 
-                          << imgPath << "\n";
-                continue;
-            }
-
-            PdfPainter painter;
-            painter.SetPage(pPage);
-
-            PdfImage image(&pdfOut);
-            image.LoadFromFile(imgPath.c_str());
-
-            double pageWidth  = pPage->GetPageSize().GetWidth();
-            double pageHeight = pPage->GetPageSize().GetHeight();
-
-            painter.DrawImage(0.0, 0.0, &image, pageWidth, pageHeight);
-            painter.FinishPage();
+    // Ovìøení existence vstupních souborù
+    for (const auto &f : inputFiles) {
+        std::ifstream test(f, std::ios::binary);
+        if (!test.good()) {
+            std::cerr << "[ERROR] Obrazek '" << f << "' nelze otevrit.\n";
+            return false;
         }
+    }
 
-        pdfOut.Write(outputFile.c_str());
-        std::cout << "[INFO] Konverze dokoncena. Vystupni soubor: " << outputFile << "\n";
-        return true;
+    // Sestavíme pøíkaz pro ImageMagick
+    // magick convert file1.jpg file2.png ... output.pdf
+    // (Nìkdy staèí "convert" místo "magick convert", podle verze systému)
+    std::ostringstream cmd;
+    cmd << "magick convert";  // pokud máte starší verzi, mùže to být jen "convert"
+    for (const auto &f : inputFiles) {
+        cmd << " " << f;
     }
-    catch (PdfError &err) {
-        std::cerr << "[ERROR] Chyba PoDoFo pri konverzi obrazku do PDF. Code: "
-                  << err.GetError() << "\n";
+    cmd << " " << outputFile;
+
+    std::cout << "[INFO] Spoustim ImageMagick pro konverzi obrazku:\n" 
+              << cmd.str() << "\n";
+
+    int ret = std::system(cmd.str().c_str());
+    if (ret != 0) {
+        std::cerr << "[ERROR] ImageMagick (convert) selhalo (kod: " 
+                  << ret << ").\n";
         return false;
     }
-    catch (std::exception &ex) {
-        std::cerr << "[ERROR] Vyjimka pri konverzi: " << ex.what() << "\n";
-        return false;
-    }
+
+    std::cout << "[INFO] Obrazky byly uspesne konvertovany do: " << outputFile << "\n";
+    return true;
 }
 
 /*
- * Funkce pro OCR (ocr) - momentálnì pseudo-kód.
- * Pokud chcete reálnì používat Tesseract, musíte sem doplnit volání:
- *   tesseract::TessBaseAPI, pixRead(), atd.
+ * Funkce pro OCR (ocr) - pseudo-kód
+ * V praxi byste mohli spustit Tesseract externim volanim, napr.:
+ *   tesseract input.png output.txt
+ * Nebo použít Tesseract C++ API (baseapi.h).
  */
 bool performOCR(const std::vector<std::string>& inputFiles, const std::string& outputFile) {
     std::cout << "[INFO] OCR spusteno (pseudo-kod). Vystup: " << outputFile << "\n";
 
-    // Zatím to jen simuluje.
-    // V reálné implementaci se Tesseractem byste:
-    // 1) Otevøeli Tesseract
-    // 2) Pro každý soubor (PDF, JPG, PNG) -> konverze do bitové mapy (pokud PDF, tak render)
-    // 3) Získali text a uložili do outputFile
-
-    std::ofstream out(outputFile);
-    if (!out.is_open()) {
+    // Demonstrativnì zapíšeme jen "fiktivní" výstup
+    std::ofstream ofs(outputFile);
+    if (!ofs.is_open()) {
         std::cerr << "[ERROR] Nelze otevrit vystupni soubor: " << outputFile << "\n";
         return false;
     }
 
-    // Pøíklad: zapíšeme jen informaci, co by se dìlalo reálnì
-    out << "Fiktivni OCR vysledky...\n";
+    ofs << "Fiktivni OCR vysledky (pouzijte realnou implementaci napr. Tesseract)...\n\n";
     for (const auto& f : inputFiles) {
-        out << "[OCR] Zpracovan soubor: " << f << "\n";
+        ofs << "[OCR] Zpracovan soubor: " << f << "\n";
     }
 
-    out.close();
+    ofs.close();
     std::cout << "[INFO] OCR dokonceno (fiktivne).\n";
     return true;
 }
@@ -218,12 +180,9 @@ int main(int argc, char* argv[]) {
                 inputFiles.push_back(argv[i]);
                 ++i;
             }
-            // Protože for-cyklus sám i++ provede,
-            // tak vrátíme index o 1 zpìt
-            --i;
+            --i; // Vrátíme se o 1
         }
         else if (arg == "-o") {
-            // Následující argument je výstupní soubor
             if ((i + 1) < argc) {
                 outputFile = argv[++i];
             } else {
@@ -232,7 +191,6 @@ int main(int argc, char* argv[]) {
             }
         }
         else if (arg == "-f") {
-            // Následující argument je funkce
             if ((i + 1) < argc) {
                 functionMode = argv[++i];
             } else {
@@ -247,7 +205,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Ošetøení, zda máme zadané vstupní soubory a funkci
     if (functionMode.empty()) {
         std::cerr << "Chyba: Nebyla zadana funkce. Pouzijte -f (blend|convert|ocr).\n";
         return 1;
@@ -257,31 +214,34 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Pokud uzivatel nezadal -o, vygenerujeme vychozi
+    // Pokud uzivatel nezadal -o, vybereme vychozi
     if (outputFile.empty()) {
         if (functionMode == "ocr") {
             outputFile = "output.txt";
         } else {
-            // pro blend a convert
             outputFile = "output.pdf";
         }
-        std::cout << "[INFO] Nebyl zadan -o, pouzivam vychozi: " << outputFile << "\n";
+        std::cout << "[INFO] Nebyl zadan -o, pouzivam vychozi: " 
+                  << outputFile << "\n";
     }
 
     // Dle zvolené funkce se spustí pøíslušná akce
     if (functionMode == "blend") {
+        // Slouèení PDF pomocí QPDF
         if (!mergePDFs(inputFiles, outputFile)) {
             std::cerr << "Chyba: Slouceni PDF selhalo.\n";
             return 1;
         }
     }
     else if (functionMode == "convert") {
+        // Konverze obrázkù do PDF (ImageMagick)
         if (!imageToPDF(inputFiles, outputFile)) {
             std::cerr << "Chyba: Konverze do PDF selhala.\n";
             return 1;
         }
     }
     else if (functionMode == "ocr") {
+        // Pseudo-kód OCR (volání Tesseractu by se muselo dodìlat)
         if (!performOCR(inputFiles, outputFile)) {
             std::cerr << "Chyba: OCR selhalo.\n";
             return 1;

@@ -1,36 +1,48 @@
-# -------------------------------
+# --------------------------------
 # Makefile pro pdf_tool
-# -------------------------------
+# --------------------------------
 
-# Proměnné
-CXX      = g++
-CXXFLAGS = -std=c++17 -Wall -Wextra
-LDFLAGS  = -ltesseract -llept  # Sem patří knihovny pro linkování (OCR)
-TARGET   = pdf_tool
-SRCS     = pdf_tool.cpp
-OBJS     = pdf_tool.o
+CXX       = g++
+CXXFLAGS  = -std=c++17 -Wall -Wextra
+# Při reálném nasazení OCR: odkomentujte -ltesseract -llept
+TESSERACT_LIBS = -ltesseract -llept
 
-# Výchozí (default) cíl (target) - pokud do příkazu make nezadáte nic jiného
+# Nastavení linkování pro PoDoFo (zkusíme pkg-config)
+# Pokud pkg-config není k dispozici nebo nenašel podofo,
+# můžete ručně uvést cesty -I/path -L/path -lpodofo.
+PODOFO_LIBS = $(shell pkg-config --cflags --libs podofo)
+
+TARGET    = pdf_tool
+SOURCES   = pdf_tool.cpp
+OBJECTS   = pdf_tool.o
+
+.PHONY: all clean run
+
+# --------------------------------
+# Výchozí cíl (target)
+# --------------------------------
 all: $(TARGET)
 
-# Pravidlo pro sestavení spustitelného souboru
-$(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) $(OBJS) -o $(TARGET) $(LDFLAGS)
+# --------------------------------
+# Linkování binárky z objektových souborů
+# --------------------------------
+$(TARGET): $(OBJECTS)
+	$(CXX) $(CXXFLAGS) $(OBJECTS) $(PODOFO_LIBS) $(TESSERACT_LIBS) -o $(TARGET)
 
-# Pravidlo pro překlad zdrojového souboru do objektového
-$(OBJS): $(SRCS)
-	$(CXX) $(CXXFLAGS) -c $(SRCS) -o $(OBJS)
+# --------------------------------
+# Překlad zdrojového souboru do .o
+# --------------------------------
+$(OBJECTS): $(SOURCES)
+	$(CXX) $(CXXFLAGS) $(PODOFO_LIBS) -c $(SOURCES) -o $(OBJECTS)
 
-# "clean" smaže dočasné (objektové) i výsledný binární soubor
+# --------------------------------
+# make clean - smaže dočasné soubory
+# --------------------------------
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJECTS) $(TARGET)
 
-# Vlastní volitelný target pro úplné "distclean"
-# (pokud byste měli např. generované soubory, dokumentaci atd.)
-distclean: clean
-	@echo "Zde byste mohli smazat i další generované výstupy..."
-
-# Užití:
-# - make        => zkompiluje projekt do binárky "pdf_tool"
-# - make clean  => smaže objektové soubory a binárku
-# - make run    => (pokud si tento target definujete) spustí program
+# --------------------------------
+# Volitelný cíl: make run
+# --------------------------------
+run: $(TARGET)
+	./$(TARGET) -h

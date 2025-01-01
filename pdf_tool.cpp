@@ -17,6 +17,7 @@
 
 // -------------- PoDoFo --------------
 #include <podofo/podofo.h>
+#include <podofo/pdfpage.h>
 // Pøi použití PoDoFo je èasto tøeba linkovat s -lpodofo a použít pkg-config
 
 // -------------- Tesseract OCR (pseudo / pro realnou implementaci odkomentovat) --------------
@@ -44,7 +45,7 @@ void printHelp() {
 
 // Pomocná funkce pro zobrazení verze
 void printVersion() {
-    std::cout << "pdf_tool v1.0\n"
+    std::cout << "pdf_tool v1.4\n"
               << "Autor: PB, pavel.bartos.pb@gmail.com\n"
               << "License: CC\n";
 }

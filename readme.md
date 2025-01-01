@@ -50,8 +50,7 @@ g++ -std=c++17 pdf_tool.cpp -o pdf_tool
 Pokud chcete, aby fungovala funkce OCR, je potřeba mít nainstalované knihovny Tesseract a Leptonica:  
 Instalace knihoven v ubuntu: **apt install tesseract-ocr libtesseract-dev libleptonica-dev libpodofo-dev**
 
-g++ -std=c++17 pdf_tool.cpp -o pdf_tool -ltesseract -llept
-
+g++ -std=c++17 -Wall -Wextra pdf_tool.cpp -o pdf_tool $(pkg-config --cflags --libs podofo)
 
 ### Kompilace s knihovnou Poppler nebo PoDoFo
 Pro sloučení PDF (funkce `blend`) a konverzi obrázků (funkce `convert`) do PDF můžete použít Poppler nebo PoDoFo (a další). Pak je nutné přilinkovat dané knihovny např. přes `pkg-config`. Příklad s Popplerem:

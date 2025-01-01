@@ -1,6 +1,8 @@
 <?php
-// upload.php
-// Zpracovává nahrané soubory, spouští pdf_tool, vrací JSON odpověď.
+// Nastavte dle skutečné cesty k pdf_tool (binární soubor):
+$pdfToolPath = "./pdf_tool";
+// Příklad pro Linux: "/usr/local/bin/pdf_tool"
+// Příklad pro Windows (cygwin/WSL): "/mnt/c/Users/xxx/pdf_tool.exe"
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -9,24 +11,26 @@ if (!is_dir($targetDir)) {
     mkdir($targetDir, 0777, true);
 }
 
-// Základní kontrola, zda přišly soubory a funkce
+// Kontrola, zda přišly soubory a funkce
 if (!isset($_POST['function']) || !isset($_FILES['files'])) {
     echo json_encode([
         'success' => false,
-        'error' => 'Chybí parametry nebo soubory.'
+        'error'   => 'Chybí parametry nebo soubory.'
     ]);
     exit;
 }
 
-$function = $_POST['function']; // "ocr" nebo "blend"
+$function     = $_POST['function']; // "ocr" nebo "blend"
 $uploadedFiles = $_FILES['files'];
 
 // Uložíme nahrané soubory do /uploads/
-$inputFiles = []; // pole cest k nahraným souborům
+$inputFiles = [];
 for ($i = 0; $i < count($uploadedFiles['name']); $i++) {
     $fileName = basename($uploadedFiles['name'][$i]);
     $tmpPath  = $uploadedFiles['tmp_name'][$i];
+
     if ($tmpPath && is_uploaded_file($tmpPath)) {
+        // Vytvoříme jedinečný název (uniqid)
         $targetPath = $targetDir . '/' . uniqid() . '_' . $fileName;
         if (move_uploaded_file($tmpPath, $targetPath)) {
             $inputFiles[] = $targetPath;
@@ -38,53 +42,49 @@ for ($i = 0; $i < count($uploadedFiles['name']); $i++) {
 if (count($inputFiles) === 0) {
     echo json_encode([
         'success' => false,
-        'error' => 'Nepodařilo se uložit žádné soubory.'
+        'error'   => 'Nepodařilo se uložit žádné soubory.'
     ]);
     exit;
 }
 
-// Připravíme výstupní soubor do /uploads/
+// Připravíme název výstupního souboru
 if ($function === 'ocr') {
-    // OCR -> výstupní .txt
     $outputFileName = 'ocr_result_' . time() . '.txt';
 } else {
-    // Blend -> výstupní .pdf
+    // Předpokládáme blend -> .pdf
     $outputFileName = 'blend_result_' . time() . '.pdf';
 }
 
 $outputPath = $targetDir . '/' . $outputFileName;
 
-// Sestavíme příkaz pro pdf_tool
-// Pozn. Předpokládáme, že pdf_tool je v PATH, jinak použijte absolutní cestu.
-$cmd = 'pdf_tool -f ' . escapeshellarg($function);
-
-// Vložíme parametry -i (vstupní soubory)
+// Sestavíme příkaz. Použijeme escapeshellcmd (pro binárku) a escapeshellarg (pro argumenty).
+$cmd  = escapeshellcmd($pdfToolPath);
+$cmd .= ' -f ' . escapeshellarg($function);
 $cmd .= ' -i';
 foreach ($inputFiles as $file) {
     $cmd .= ' ' . escapeshellarg($file);
 }
-
-// Vložíme parametr -o (výstup)
 $cmd .= ' -o ' . escapeshellarg($outputPath);
 
-// Spustíme příkaz (pokud by to bylo dlouhé, je lepší použít proc_open atd.)
-// 2>&1 přesměruje chyby do standardního výstupu, abychom je mohli vypsat
+// Spustíme příkaz a získáme výstup a návratový kód
 exec($cmd . ' 2>&1', $output, $returnVar);
 
 if ($returnVar !== 0) {
-    // Přišlo k chybě
+    // Chyba
     echo json_encode([
         'success' => false,
-        'error' => 'pdf_tool selhal. Výstup: ' . implode("\n", $output)
+        'error'   => 'pdf_tool selhalo. Výstup: ' . implode("\n", $output)
     ]);
     exit;
 }
 
-// Pokud vše OK, vrátíme JSON s odkazem na stažení
-// Sestavíme URL k souboru (předpokládáme, že kořen webu je o úroveň výš apod.)
+// Sestavíme URL k souboru, abychom ho mohli stáhnout
+// Předpokládáme, že "uploads" je dostupné na stejné úrovni jako "upload.php"
 $downloadUrl = 'uploads/' . $outputFileName;
 
+// Vrátíme JSON
 echo json_encode([
-    'success' => true,
+    'success'     => true,
     'downloadUrl' => $downloadUrl
 ]);
+

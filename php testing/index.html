@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>Testovací prostředí pdf_tool</title>
+  <style>
+    /* Jednoduchý styl pro drag & drop oblast */
+    #dropZone {
+      width: 300px;
+      height: 200px;
+      border: 2px dashed #777;
+      border-radius: 10px;
+      text-align: center;
+      line-height: 200px;
+      color: #777;
+      margin-bottom: 20px;
+    }
+    #dropZone.hover {
+      background-color: #eee;
+      border-color: #333;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Testovací prostředí pro pdf_tool</h1>
+
+<div>
+  <label for="functionSelect">Vyber funkci:</label>
+  <select id="functionSelect">
+    <option value="ocr">OCR (vytvoření .txt)</option>
+    <option value="blend">Blend (sloučení PDF do jednoho)</option>
+  </select>
+</div>
+
+<div id="dropZone">Přetáhněte soubory sem</div>
+<input type="file" id="fileInput" multiple style="display: none;" />
+
+<button id="sendBtn">Odeslat</button>
+
+<div id="status"></div>
+<div id="downloadLink"></div>
+
+<script>
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const sendBtn   = document.getElementById('sendBtn');
+  const statusDiv = document.getElementById('status');
+  const downloadDiv = document.getElementById('downloadLink');
+  const functionSelect = document.getElementById('functionSelect');
+
+  // Přidáme posluchače událostí pro drag & drop
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.add('hover');
+  });
+
+  dropZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.remove('hover');
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dropZone.classList.remove('hover');
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      fileInput.files = e.dataTransfer.files;  // Uložíme soubory do fileInput
+    }
+  });
+
+  // Kliknutí na dropZone otevře dialog pro výběr souborů
+  dropZone.addEventListener('click', () => {
+    fileInput.click();
+  });
+
+  // Po stisku tlačítka "Odeslat"
+  sendBtn.addEventListener('click', () => {
+    statusDiv.textContent = 'Nahrávám...';
+    downloadDiv.innerHTML = '';
+
+    const selectedFunction = functionSelect.value;
+    const files = fileInput.files;
+
+    if (!files || files.length === 0) {
+      alert('Nebyl vybrán žádný soubor!');
+      return;
+    }
+
+    // Připravíme data pro AJAX (FormData)
+    const formData = new FormData();
+    formData.append('function', selectedFunction);
+
+    // Přidáme všechny vybrané soubory
+    for (let i = 0; i < files.length; i++) {
+      formData.append('files[]', files[i]);
+    }
+
+    // AJAX volání na upload.php
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'upload.php', true);
+
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          if (response.success) {
+            statusDiv.textContent = 'Hotovo!';
+            // Zobrazíme odkaz ke stažení
+            downloadDiv.innerHTML = '<a href="' + response.downloadUrl + '" target="_blank">Stáhnout výsledek</a>';
+          } else {
+            statusDiv.textContent = 'Chyba: ' + (response.error || 'Neznámá chyba');
+          }
+        } catch (e) {
+          statusDiv.textContent = 'Chyba při parsování odpovědi serveru.';
+        }
+      } else {
+        statusDiv.textContent = 'Chyba: ' + xhr.statusText;
+      }
+    };
+
+    xhr.onerror = () => {
+      statusDiv.textContent = 'Chyba připojení nebo selhání AJAX požadavku.';
+    };
+
+    xhr.send(formData);
+  });
+</script>
+
+</body>
+</html>

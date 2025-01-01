@@ -6,8 +6,7 @@
  * Implementace funkcí:
  * 1) Slouèení PDF souborù do jednoho (blend)  -- pomocí PoDoFo
  * 2) Konverze JPG/PNG do PDF (convert)        -- pomocí PoDoFo
- * 3) OCR (jpg/png/pdf do .txt)                -- ukázkový/pseudo-kód pro Tesseract
- *
+ * 3) OCR (jpg/png/pdf do .txt)                -- pseudo-kód pro Tesseract
  */
 
 #include <iostream>
@@ -17,12 +16,10 @@
 
 // -------------- PoDoFo --------------
 #include <podofo/podofo.h>
-#include <podofo/pdfpage.h>
-// Pøi použití PoDoFo je èasto tøeba linkovat s -lpodofo a použít pkg-config
 
-// -------------- Tesseract OCR (pseudo / pro realnou implementaci odkomentovat) --------------
-// #include <tesseract/baseapi.h>
-// #include <leptonica/allheaders.h>
+// -------------- Tesseract OCR (pokud byste chtìli reálnì použít) --------------
+#include <tesseract/baseapi.h>
+#include <leptonica/allheaders.h>
 
 
 // Pomocná funkce pro zobrazení nápovìdy (help)
@@ -45,7 +42,7 @@ void printHelp() {
 
 // Pomocná funkce pro zobrazení verze
 void printVersion() {
-    std::cout << "pdf_tool v1.4\n"
+    std::cout << "pdf_tool v1.5\n"
               << "Autor: PB, pavel.bartos.pb@gmail.com\n"
               << "License: CC\n";
 }
@@ -54,15 +51,17 @@ void printVersion() {
  * Funkce pro slouèení PDF (blend) pomocí knihovny PoDoFo
  */
 bool mergePDFs(const std::vector<std::string>& inputFiles, const std::string& outputFile) {
+    using namespace PoDoFo;
+
     try {
         std::cout << "[INFO] Sluèuji PDF pomocí PoDoFo...\n";
 
-        PoDoFo::PdfMemDocument pdfOut;
+        PdfMemDocument pdfOut;
 
         // Pro každý vstupní soubor
         for (const auto &inputPath : inputFiles) {
             // Naèteme PDF do doèasného dokumentu
-            PoDoFo::PdfMemDocument pdfIn;
+            PdfMemDocument pdfIn;
             pdfIn.Load(inputPath.c_str());
 
             // Zjistíme poèet stránek
@@ -82,7 +81,7 @@ bool mergePDFs(const std::vector<std::string>& inputFiles, const std::string& ou
         std::cout << "[INFO] Hotovo. Vystupni soubor: " << outputFile << "\n";
         return true;
     }
-    catch (PoDoFo::PdfError &err) {
+    catch (PdfError &err) {
         std::cerr << "[ERROR] PoDoFo selhalo pri slucovani. Code: " 
                   << err.GetError() << std::endl;
         return false;
@@ -104,17 +103,16 @@ bool imageToPDF(const std::vector<std::string>& inputFiles, const std::string& o
 
         PdfMemDocument pdfOut;
 
-        // Vytvoøíme stránku pro každý obrázek (nebo mùžete slouèit vše na jednu stránku)
         for (const auto &imgPath : inputFiles) {
-            // Vytvoøíme novou stránku. Nastavíme velikost na A4 (šíøka 595, výška 842) 
-            // nebo mùžeme použít reálné rozmìry obrázku (pomocí image.GetWidth() atd.).
-            PdfPage* pPage = pdfOut.CreatePage(PdfPageFormat::A4());
+            // Vytvoøíme novou stránku (A4 = 595 x 842 bodù)
+            PdfRect pageRect(0.0, 0.0, 595.0, 842.0);
+            PdfPage* pPage = pdfOut.CreatePage(pageRect);
             if (!pPage) {
-                std::cerr << "[ERROR] Nepodarilo se vytvorit stranku pro obrazek: " << imgPath << "\n";
+                std::cerr << "[ERROR] Nepodarilo se vytvorit stranku pro obrazek: " 
+                          << imgPath << "\n";
                 continue;
             }
 
-            // Inicializace "malíøe" (painter)
             PdfPainter painter;
             painter.SetPage(pPage);
 
@@ -122,16 +120,12 @@ bool imageToPDF(const std::vector<std::string>& inputFiles, const std::string& o
             PdfImage image(&pdfOut);
             image.LoadFromFile(imgPath.c_str());
 
+            // Rozmìry stránky
             double pageWidth  = pPage->GetPageSize().GetWidth();
             double pageHeight = pPage->GetPageSize().GetHeight();
 
-            // Zjistíme rozmìry obrázku v bodech (72 DPI). Pokud chceme zachovat pomìr stran, 
-            // mùžeme napøíklad dopoèítat vhodnou šíøku/výšku:
-            double imgWidth  = image.GetWidth();
-            double imgHeight = image.GetHeight();
-
-            // Pro jednoduchost: necháme obrázek vyplnit celou stránku
-            painter.DrawImage(0, 0, &image, pageWidth, pageHeight);
+            // Jednoduše vykreslíme obrázek pøes celou stránku
+            painter.DrawImage(0.0, 0.0, &image, pageWidth, pageHeight);
 
             painter.FinishPage();
         }
@@ -154,14 +148,15 @@ bool imageToPDF(const std::vector<std::string>& inputFiles, const std::string& o
 }
 
 /*
- * Funkce pro OCR (ocr) - Ukázkový pseudo-kód s Tesseractem
- * V reálné implementaci je nutné mít Tesseract a Leptonicu, 
- * a volat funkce pro zpracování. Zde je ponechán spíše demonstrativní skeleton.
+ * Funkce pro OCR (ocr) - momentálnì pseudo-kód. 
+ * Pokud chcete reálnì používat Tesseract:
+ *   - odkomentujte #include <tesseract/baseapi.h> a #include <leptonica/allheaders.h>
+ *   - linkujte s -ltesseract -llept
  */
-bool performOCR(const std::vector<std::string>& inputFiles, const std::string& outputFile) {
-    std::cout << "[INFO] OCR spusteno (pseudo-kod). Vystup: " << outputFile << "\n";
+bool performOCR(const std::vector<std::string>& /*inputFiles*/, const std::string& /*outputFile*/) {
+    std::cout << "[INFO] OCR spusteno (pseudo-kod).\n";
 
-    // Pseudo-kód:
+    // Pseudo-kód Tesseractu:
     /*
     tesseract::TessBaseAPI tess;
     if(tess.Init(nullptr, "eng")) {
@@ -193,9 +188,6 @@ bool performOCR(const std::vector<std::string>& inputFiles, const std::string& o
     out.close();
     tess.End();
     */
-    // Zde by se také øešilo, pokud je vstup PDF (bez textové vrstvy),
-    // tak byste museli PDF nejprve rendrovat do obrázku a ten pak poslat do Tesseractu.
-
     std::cout << "[INFO] OCR dokonceno (fiktivne).\n";
     return true;
 }
@@ -230,10 +222,9 @@ int main(int argc, char* argv[]) {
                 inputFiles.push_back(argv[i]);
                 ++i;
             }
-            --i; // Vrátíme se o jeden zpìt, protože v for-cyklu se ještì zvýší
+            --i;
         }
         else if (arg == "-o") {
-            // Následující argument je výstupní soubor
             if ((i + 1) < argc) {
                 outputFile = argv[++i];
             } else {
@@ -242,7 +233,6 @@ int main(int argc, char* argv[]) {
             }
         }
         else if (arg == "-f") {
-            // Následující argument je funkce
             if ((i + 1) < argc) {
                 functionMode = argv[++i];
             } else {
@@ -251,13 +241,11 @@ int main(int argc, char* argv[]) {
             }
         }
         else {
-            // Neznámý parametr
             std::cerr << "Neznamy parametr: " << arg << "\n";
             return 1;
         }
     }
 
-    // Ošetøení, zda máme zadané vstupní soubory a funkci
     if (functionMode.empty()) {
         std::cerr << "Chyba: Nebyla zadana funkce. Pouzijte -f (blend|convert|ocr).\n";
         return 1;
@@ -267,7 +255,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Dle zvolené funkce se spustí pøíslušná akce
+    // Dle zvolené funkce
     if (functionMode == "blend") {
         if (outputFile.empty()) {
             std::cerr << "Chyba: Nebyl zadan vystupni soubor pro slouceni PDF.\n";

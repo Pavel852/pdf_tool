@@ -5,6 +5,45 @@
   <title>Testovací prostředí pdf_tool</title>
   <!-- Odkaz na externí CSS soubor -->
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* Rychlý styl pro boxy, odkaz X a hover efekt */
+    .file-item {
+      position: relative;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 8px;
+      margin: 5px;
+      display: inline-block;
+      background: #f9f9f9;
+    }
+    .file-item .remove-btn {
+      position: absolute;
+      top: 2px;
+      right: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      color: #c00;
+    }
+    .file-item:hover {
+      background-color: #f1f1f1;
+    }
+    #fileList {
+      margin-top: 10px;
+    }
+    #dropZone {
+      border: 2px dashed #999;
+      padding: 20px;
+      text-align: center;
+      color: #666;
+      cursor: pointer;
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+    #dropZone.hover {
+      border-color: #333;
+      background: #fafafa;
+    }
+  </style>
 </head>
 <body>
 
@@ -46,37 +85,62 @@
   const functionSelect = document.getElementById('functionSelect');
   const fileListDiv    = document.getElementById('fileList');
 
-  // =====================================================
-  // Funkce, která zobrazí seznam vybraných souborů v divu #fileList
-  // =====================================================
-  function updateFileList() {
-    fileListDiv.innerHTML = ''; // Vymažeme stávající obsah
-    
-    const files = fileInput.files;
-    if (!files || files.length === 0) {
+  // Místo přímého používání fileInput.files (které je read-only)
+  // si povedeme "vlastní" seznam souborů v poli:
+  let fileListArray = [];
+
+  /**
+   * Vykreslí (znovu) seznam souborů do #fileList na základě fileListArray.
+   */
+  function renderFileList() {
+    fileListDiv.innerHTML = '';
+
+    if (fileListArray.length === 0) {
       fileListDiv.innerHTML = '<p style="color:#999;">Žádné soubory vybrány</p>';
       return;
     }
-    
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      
-      // Vytvoříme box pro jeden soubor
+
+    // Projdeme pole a pro každý soubor uděláme box
+    fileListArray.forEach((file, index) => {
       const fileBox = document.createElement('div');
       fileBox.classList.add('file-item');
+
+      // Zobrazíme název, typ a velikost
       fileBox.innerHTML = `
+        <span class="remove-btn" data-index="${index}">X</span>
         <strong>${file.name}</strong><br>
         Typ: ${file.type || 'neznámý'}<br>
         Velikost: ${(file.size / 1024).toFixed(2)} KB
       `;
-      
+
       fileListDiv.appendChild(fileBox);
-    }
+    });
+
+    // Najdeme všechna tlačítka "X" a navěsíme jim akci pro odstranění
+    const removeBtns = document.querySelectorAll('.remove-btn');
+    removeBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const index = e.target.getAttribute('data-index');
+        // Odstraníme soubor z pole
+        fileListArray.splice(index, 1);
+        // Znovu vykreslíme
+        renderFileList();
+      });
+    });
   }
 
-  // =====================================================
-  // Drag & Drop
-  // =====================================================
+  /**
+   * Přidání souborů (z dropu nebo z file dialogu) do fileListArray
+   */
+  function addFiles(files) {
+    // Převedeme FileList/Iterable na pole
+    const newFiles = Array.from(files);
+    // Můžete i filtrovat duplicity apod., pokud chcete
+    fileListArray = fileListArray.concat(newFiles);
+    renderFileList();
+  }
+
+  // ============================ DRAG & DROP ============================
   dropZone.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -95,10 +159,7 @@
     dropZone.classList.remove('hover');
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      // Přeneseme soubory do fileInput
-      fileInput.files = e.dataTransfer.files;
-      // Aktualizujeme seznam souborů
-      updateFileList();
+      addFiles(e.dataTransfer.files);
     }
   });
 
@@ -108,33 +169,32 @@
   });
 
   // Změna v inputu (když uživatel vybere soubory přes dialog)
-  fileInput.addEventListener('change', () => {
-    updateFileList();
+  fileInput.addEventListener('change', (e) => {
+    addFiles(e.target.files);
+    // Vyprázdníme nativní fileInput, abychom se vyhnuli duplikování
+    fileInput.value = '';
   });
 
-  // =====================================================
-  // Klik na tlačítko "Odeslat"
-  // =====================================================
+  // ============================ ODESLÁNÍ ============================
   sendBtn.addEventListener('click', () => {
     statusDiv.textContent = 'Odesílám...';
     downloadDiv.innerHTML = '';
 
     const selectedFunction = functionSelect.value;
-    const files = fileInput.files;
 
-    if (!files || files.length === 0) {
+    if (!fileListArray || fileListArray.length === 0) {
       alert('Nebyl vybrán žádný soubor!');
       statusDiv.textContent = '';
       return;
     }
 
-    // Připravíme FormData
+    // Vytvoříme FormData s obsahem fileListArray
     const formData = new FormData();
     formData.append('function', selectedFunction);
 
-    for (let i = 0; i < files.length; i++) {
-      formData.append('files[]', files[i]);
-    }
+    fileListArray.forEach(file => {
+      formData.append('files[]', file);
+    });
 
     // AJAX - odeslání na upload.php
     const xhr = new XMLHttpRequest();
@@ -168,7 +228,7 @@
   });
 
   // Načteme prázdný seznam souborů na startu
-  updateFileList();
+  renderFileList();
 </script>
 
 </body>

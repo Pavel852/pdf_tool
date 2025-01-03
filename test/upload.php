@@ -1,7 +1,5 @@
 <?php
 // Nastavte cestu k pdf_tool (zkompilovaný binární soubor):
-// Např. na Linuxu: "/usr/local/bin/pdf_tool"
-// Např. Windows (WSL/Cygwin): "/mnt/c/Users/xxxx/pdf_tool.exe"
 $pdfToolPath = "../pdf_tool";
 
 // Nastavení hlavičky pro JSON výstup
@@ -87,4 +85,3 @@ echo json_encode([
     'success'     => true,
     'downloadUrl' => $downloadUrl
 ]);
-

@@ -1,5 +1,7 @@
 <?php
 // Nastavte cestu k pdf_tool (zkompilovaný binární soubor):
+// Např. na Linuxu: "/usr/local/bin/pdf_tool"
+// Např. Windows (WSL/Cygwin): "/mnt/c/Users/xxxx/pdf_tool.exe"
 $pdfToolPath = "../pdf_tool";
 
 // Nastavení hlavičky pro JSON výstup
@@ -57,13 +59,18 @@ if ($function === 'ocr') {
 
 $outputPath = $targetDir . '/' . $outputFileName;
 
-// Sestavíme příkaz. 
+// Sestavíme příkaz pro pdf_tool
 $cmd  = escapeshellcmd($pdfToolPath);
-$cmd .= ' -f ' . escapeshellarg($function);
+// Důležitá oprava: argument musí být '-f=ocr' nebo '-f=blend'
+$cmd .= ' -f=' . escapeshellarg($function);
+
+// Přidáme -i a jednotlivé vstupní soubory
 $cmd .= ' -i';
 foreach ($inputFiles as $file) {
     $cmd .= ' ' . escapeshellarg($file);
 }
+
+// Nastavíme -o s cestou k výstupnímu souboru
 $cmd .= ' -o ' . escapeshellarg($outputPath);
 
 // Spustíme příkaz a zjistíme výstup a návratový kód
@@ -78,7 +85,7 @@ if ($returnVar !== 0) {
     exit;
 }
 
-// Sestavíme URL k souboru (pro stažení)
+// Sestavíme URL k výstupnímu souboru (relativní odkaz z pohledu prohlížeče)
 $downloadUrl = 'uploads/' . $outputFileName;
 
 echo json_encode([

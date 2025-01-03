@@ -62,7 +62,6 @@ bool mergeFilesIntoPDF(const std::vector<std::string>& inputFiles, const std::st
     // Vytvoříme prázdný PDF dokument
     outpdf.emptyPDF();
 
-    // Pro každý vstupní soubor
     for (auto &file : inputFiles) {
         // Kontrola přípony
         auto toLower = [](std::string s) {
@@ -82,7 +81,7 @@ bool mergeFilesIntoPDF(const std::vector<std::string>& inputFiles, const std::st
             }
         }
 
-        // Nyní načteme PDF pomoci QPDF
+        // Nyní načteme PDF pomocí QPDF
         QPDF tmpPdf;
         try {
             tmpPdf.processFile(pdfToImport.c_str());
@@ -92,14 +91,17 @@ bool mergeFilesIntoPDF(const std::vector<std::string>& inputFiles, const std::st
             return false;
         }
 
-        // Vytáhneme stránky ze zdrojového PDF a přidáme je do outpdf
+        // Vytáhneme stránky ze zdrojového PDF
         QPDFPageDocumentHelper outpdfHelper(outpdf);
         QPDFPageDocumentHelper tmpHelper(tmpPdf);
 
-        // Získáme všechny stránky
+        // Získáme všechny stránky zdrojového PDF
         auto pages = tmpHelper.getAllPages();
-        // Přidáme je do cílového dokumentu
-        outpdfHelper.addPages(pages, false);
+        // Místo addPages() (které ve starší verzi QPDF nemusí existovat)
+        // použijeme v cyklu addPage() pro každou stránku
+        for (auto const& page : pages) {
+            outpdfHelper.addPage(page, false);
+        }
     }
 
     // Uložení výsledného PDF
@@ -122,7 +124,7 @@ bool mergeFilesIntoPDF(const std::vector<std::string>& inputFiles, const std::st
  *
  * Pozn.: QPDF neřeší vykreslování PDF do bitmap (to by musel obsloužit jiný nástroj/knihovna,
  * např. Poppler). Zde *schematicky* převezmeme předchozí ukázku, 
- * tzn. pro PDF "předpokládáme" nějaké vykreslení do bitmappy apod.
+ * tzn. pro PDF "předpokládáme" nějaké vykreslení do bitmapy apod.
  */
 bool performOCR(const std::vector<std::string>& inputFiles, const std::string& outputFile) {
     FILE* out = fopen(outputFile.c_str(), "w");

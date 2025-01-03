@@ -1,44 +1,35 @@
 # Makefile pro pdf_tool (PDFium + Tesseract)
-# -------------------------------------------
-# Příklad použití:
-#   $ make
-#   $ ./pdf_tool -h
+# ------------------------------------------
+# Předpokládáme, že v aktuálním adresáři je soubor pdf_tool.cpp
+# a v systému nainstalované:
+#   build-essential, libpdfium-dev, libtesseract-dev, libleptonica-dev
 #
-# Pokud potřebujete vyčistit:
-#   $ make clean
-#
+# Použití:
+#   make          # zkompiluje pdf_tool
+#   ./pdf_tool -h # spuštění programu
+#   make clean    # vyčištění projektu
 
-# Kompilátor a základní volby
 CXX       := g++
 CXXFLAGS  := -Wall -g -std=c++11
+LDFLAGS   := -lpdfium -ltesseract -llept
 
-# Zde si můžete upravit cesty k hlavičkám a knihovnám PDFium / Tesseract
-PDFIUM_INC := -I/opt/pdfium/include
-PDFIUM_LIB := -L/opt/pdfium/lib -lpdfium
+TARGET    := pdf_tool
+SRCS      := pdf_tool.cpp
+OBJS      := $(SRCS:.cpp=.o)
 
-TESS_INC   := -I/usr/include/tesseract
-TESS_LIB   := -ltesseract -llept
-
-# Název výsledného spustitelného souboru
-TARGET := pdf_tool
-
-# Zdrojové soubory
-SRCS   := pdf_tool.cpp
-
-# Z objektových souborů (každý .cpp -> .o)
-OBJS   := $(SRCS:.cpp=.o)
-
-# Cílové pravidlo (all)
+# Výchozí cíl
 all: $(TARGET)
 
-# Postup, jak sestavit finální binárku
+# Sestavení spustitelného souboru
 $(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(PDFIUM_LIB) $(TESS_LIB)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-# Pravidlo pro kompilaci .cpp -> .o
+# Kompilace zdrojových souborů .cpp na objektové .o
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) $(PDFIUM_INC) $(TESS_INC) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Vyčištění projektu
+# Vyčištění
 clean:
 	rm -f $(OBJS) $(TARGET)
+
+.PHONY: all clean

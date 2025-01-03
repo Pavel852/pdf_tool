@@ -1,1 +1,2 @@
-g++ -std=c++17 pdf_tool.cpp -o pdf_tool -ltesseract -llept
+sudo apt-get install -y build-essential libtesseract-dev libleptonica-dev tesseract-ocr tesseract-ocr-eng libpdfium-dev
+g++ pdf_tool.cpp -o pdf_tool -I/opt/pdfium/include -L/opt/pdfium/lib -lpdfium -I/usr/include/tesseract -ltesseract -llept --std=c++11

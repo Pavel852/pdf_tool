@@ -1,47 +1,44 @@
-# --------------------------------
-# Makefile pro pdf_tool (bez pkg-config)
-# --------------------------------
+# Makefile pro pdf_tool (PDFium + Tesseract)
+# -------------------------------------------
+# Příklad použití:
+#   $ make
+#   $ ./pdf_tool -h
+#
+# Pokud potřebujete vyčistit:
+#   $ make clean
+#
 
-CXX       = g++
-CXXFLAGS  = -std=c++17 -Wall -Wextra
-# Cesty k hlavičkám a knihovnám PoDoFo (upravte dle svého systému!)
-PODOFO_INCLUDES = -I/usr/include/podofo
-PODOFO_LIBS     = -L/usr/lib -lpodofo
+# Kompilátor a základní volby
+CXX       := g++
+CXXFLAGS  := -Wall -g -std=c++11
 
-# Pokud potřebujete Tesseract, odkomentujte (a musíte mít nainstalované)
-# TESSERACT_LIBS = -ltesseract -llept
+# Zde si můžete upravit cesty k hlavičkám a knihovnám PDFium / Tesseract
+PDFIUM_INC := -I/opt/pdfium/include
+PDFIUM_LIB := -L/opt/pdfium/lib -lpdfium
 
-TARGET    = pdf_tool
-SOURCES   = pdf_tool.cpp
-OBJECTS   = pdf_tool.o
+TESS_INC   := -I/usr/include/tesseract
+TESS_LIB   := -ltesseract -llept
 
-.PHONY: all clean run
+# Název výsledného spustitelného souboru
+TARGET := pdf_tool
 
-# --------------------------------
-# Výchozí cíl (target)
-# --------------------------------
+# Zdrojové soubory
+SRCS   := pdf_tool.cpp
+
+# Z objektových souborů (každý .cpp -> .o)
+OBJS   := $(SRCS:.cpp=.o)
+
+# Cílové pravidlo (all)
 all: $(TARGET)
 
-# --------------------------------
-# Linkování binárky
-# --------------------------------
-$(TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) $(OBJECTS) $(PODOFO_LIBS) $(TESSERACT_LIBS) -o $(TARGET)
+# Postup, jak sestavit finální binárku
+$(TARGET): $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(PDFIUM_LIB) $(TESS_LIB)
 
-# --------------------------------
-# Překlad zdrojového souboru do objektu
-# --------------------------------
-$(OBJECTS): $(SOURCES)
-	$(CXX) $(CXXFLAGS) $(PODOFO_INCLUDES) -c $(SOURCES) -o $(OBJECTS)
+# Pravidlo pro kompilaci .cpp -> .o
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) $(PDFIUM_INC) $(TESS_INC) -c $< -o $@
 
-# --------------------------------
-# make clean - smaže dočasné soubory
-# --------------------------------
+# Vyčištění projektu
 clean:
-	rm -f $(OBJECTS) $(TARGET)
-
-# --------------------------------
-# Volitelný cíl: make run
-# --------------------------------
-run: $(TARGET)
-	./$(TARGET) -h
+	rm -f $(OBJS) $(TARGET)

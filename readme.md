@@ -1,6 +1,4 @@
-========================================
- pdf_tool
-========================================
+
 Version: 1.0
 Author:  PB, pavel.bartos.pb@gmail.com
 License: CC
